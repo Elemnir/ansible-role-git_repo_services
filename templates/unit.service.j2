@@ -1,0 +1,18 @@
+[Unit]
+Description={{ item.unit_name }} service
+After={{ item.after_target|default('network.target') }}
+
+[Service]
+{% if "user_name" in item %}
+User={{ item.user_name }}
+{% endif %}
+EnvironmentFile=/etc/systemd-envfiles/{{ item.unit_name }}.environment
+PIDFile=/run/{{ item.unit_name }}.pid
+WorkingDirectory={{ item.source_path }}
+ExecStart={{ item.exec_start }}
+ExecReload=/bin/kill -s HUP $MAINPID
+ExecStop=/bin/kill -s TERM $MAINPID
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target

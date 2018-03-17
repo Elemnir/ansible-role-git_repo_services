@@ -1,0 +1,59 @@
+---
+- block:
+    - name: Install any packages the services depend on
+      package:
+        name: "{{ item.1 }}"
+        state: installed
+      with_subelements:
+        - "{{ git_repo_services_list }}"
+        - dependencies
+        - skip_missing: True
+
+    - name: Clone the repos if they weren't already
+      git:
+        repo: "{{ item.repo_path }}"
+        dest: "{{ item.source_path }}"
+        update: no
+      become_user: "{{ item.user_name|default(omit) }}"
+      with_items: "{{ git_repo_services_list }}"
+
+    - name: Render the service file
+      template:
+        src: "unit.service.j2"
+        dest: "/etc/systemd/system/{{ item.unit_name }}.service"
+      with_items: "{{ git_repo_services_list }}"
+
+    - name: Make the /etc/systemd-envfiles directory
+      file:
+        path: /etc/systemd-envfiles
+        state: directory
+
+    - name: Set environment variables for the services
+      template:
+        src: "unit.environment.j2"
+        dest: "/etc/systemd-envfiles/{{ item.unit_name }}.environment"
+        owner: root
+        group: root
+        mode: 0700
+      with_items: "{{ git_repo_services_list }}"
+
+    - name: Start and enable services
+      systemd:
+        daemon_reload: yes
+        name: "{{ item.unit_name }}.service"
+        state: started
+        enabled: yes
+      with_items: "{{ git_repo_services_list }}"
+
+    - name: Open any firewall ports the services communicate over
+      firewalld:
+        port: "{{ item.1 }}"
+        state: enabled
+        permanent: True
+        immediate: True
+      with_subelements:
+        - "{{ git_repo_services_list }}"
+        - firewalld_ports
+        - skip_missing: True
+
+  become: true

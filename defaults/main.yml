@@ -1,0 +1,12 @@
+---
+
+git_repo_services_list: []
+
+# - unit_name: string # Name of the service
+#   repo_path: string # URL of the git repo
+#   source_path: string # Path where the repo will be checked out
+#   exec_start: string # Command to place under ExecStart in the unit file
+#   user_name: string # Optionally set a user who runs the service
+#   dependencies: list # Any packages the repo depends on. Optional.
+#   firewalld_ports: list # Any ports that should be opened. Optional.
+#   environment: dict # Environment variables to set for the service
