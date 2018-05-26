@@ -15,13 +15,13 @@
         dest: "{{ item.source_path }}"
         update: no
       become_user: "{{ item.user_name|default(omit) }}"
-      with_items: "{{ git_repo_services_list }}"
+      loop: "{{ git_repo_services_list }}"
 
     - name: Render the service file
       template:
         src: "unit.service.j2"
         dest: "/etc/systemd/system/{{ item.unit_name }}.service"
-      with_items: "{{ git_repo_services_list }}"
+      loop: "{{ git_repo_services_list }}"
 
     - name: Make the /etc/systemd-envfiles directory
       file:
@@ -35,7 +35,7 @@
         owner: root
         group: root
         mode: 0700
-      with_items: "{{ git_repo_services_list }}"
+      loop: "{{ git_repo_services_list }}"
 
     - name: Start and enable services
       systemd:
@@ -43,7 +43,7 @@
         name: "{{ item.unit_name }}.service"
         state: started
         enabled: yes
-      with_items: "{{ git_repo_services_list }}"
+      loop: "{{ git_repo_services_list }}"
 
     - name: Open any firewall ports the services communicate over
       firewalld:
