@@ -9,4 +9,5 @@ git_repo_services_list: []
 #   user_name: string # Optionally set a user who runs the service
 #   dependencies: list # Any packages the repo depends on. Optional.
 #   firewalld_ports: list # Any ports that should be opened. Optional.
-#   environment: dict # Environment variables to set for the service
+#   environment: dict # Environment variables to set for the service.
+#   timer_spec: string # A Systemd timer line. If included, the service will be run as a timer instead of service.
