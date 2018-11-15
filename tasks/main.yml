@@ -1,59 +1,68 @@
 ---
-- block:
-    - name: Install any packages the services depend on
-      package:
-        name: "{{ item.1 }}"
-        state: installed
-      with_subelements:
-        - "{{ git_repo_services_list }}"
-        - dependencies
-        - skip_missing: True
 
-    - name: Clone the repos if they weren't already
-      git:
-        repo: "{{ item.repo_path }}"
-        dest: "{{ item.source_path }}"
-        update: no
-      become_user: "{{ item.user_name|default(omit) }}"
-      loop: "{{ git_repo_services_list }}"
+- become: true
+  block:
+  - name: Install any packages the services depend on
+    package:
+      name: "{{ item.1 }}"
+      state: installed
+    with_subelements:
+      - "{{ git_repo_services_list }}"
+      - dependencies
+      - skip_missing: True
 
-    - name: Render the service file
-      template:
-        src: "unit.service.j2"
-        dest: "/etc/systemd/system/{{ item.unit_name }}.service"
-      loop: "{{ git_repo_services_list }}"
+  - name: Clone the repos if they weren't already
+    git:
+      repo: "{{ item.repo_path }}"
+      dest: "{{ item.source_path }}"
+      update: no
+    become_user: "{{ item.user_name|default(omit) }}"
+    loop: "{{ git_repo_services_list }}"
 
-    - name: Make the /etc/systemd-envfiles directory
-      file:
-        path: /etc/systemd-envfiles
-        state: directory
+  - name: Render the service files
+    template:
+      src: "unit.service.j2"
+      dest: "/etc/systemd/system/{{ item.unit_name }}.service"
+    loop: "{{ git_repo_services_list }}"
 
-    - name: Set environment variables for the services
-      template:
-        src: "unit.environment.j2"
-        dest: "/etc/systemd-envfiles/{{ item.unit_name }}.environment"
-        owner: root
-        group: root
-        mode: 0700
-      loop: "{{ git_repo_services_list }}"
+  - name: Write timers if timer specs were defined
+    template:
+      src: "unit.timer.j2"
+      dest: "/etc/systemd/system/{{ item.unit_name }}.timer"
+    when: 'timer_spec' in item
+    loop: "{{ git_repo_services_list }}"
 
-    - name: Start and enable services
-      systemd:
-        daemon_reload: yes
-        name: "{{ item.unit_name }}.service"
-        state: started
-        enabled: yes
-      loop: "{{ git_repo_services_list }}"
+  - name: Make the /etc/systemd-envfiles directory
+    file:
+      path: /etc/systemd-envfiles
+      state: directory
 
-    - name: Open any firewall ports the services communicate over
-      firewalld:
-        port: "{{ item.1 }}"
-        state: enabled
-        permanent: True
-        immediate: True
-      with_subelements:
-        - "{{ git_repo_services_list }}"
-        - firewalld_ports
-        - skip_missing: True
+  - name: Set environment variables for the services
+    template:
+      src: "unit.environment.j2"
+      dest: "/etc/systemd-envfiles/{{ item.unit_name }}.environment"
+      owner: root
+      group: root
+      mode: 0700
+    loop: "{{ git_repo_services_list }}"
 
-  become: true
+  - name: Start and enable services
+    systemd:
+      daemon_reload: yes
+      name: >
+        {{ item.unit_name }}.{% if 'timer_spec' in item %}timer{% else %}service{% endif %}
+      state: started
+      enabled: yes
+    loop: "{{ git_repo_services_list }}"
+
+  - name: Open any firewall ports the services communicate over
+    firewalld:
+      port: "{{ item.1 }}"
+      state: enabled
+      permanent: True
+      immediate: True
+    with_subelements:
+      - "{{ git_repo_services_list }}"
+      - firewalld_ports
+      - skip_missing: True
+
