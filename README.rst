@@ -47,6 +47,8 @@ The following keys are also supported, but optional:
     timer_spec: string
         A Systemd timer line such as ``OnCalender=...``. When provided, instead of starting and enabling the service, a timer will be created, started, and enabled to run the service instead. 
 
+    setup_script: string
+        The contents of this variable will be rendered to a script and executed the first time the role is executed and each time the script changes. Use this to do any setup of the repository.
 
 ------------------
  Example Playbook

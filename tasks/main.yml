@@ -16,7 +16,7 @@
       repo: "{{ item.repo_path }}"
       dest: "{{ item.source_path }}"
       update: no
-    become_user: "{{ item.user_name|default(omit) }}"
+    become_user: "{{ item.user_name|default('root') }}"
     loop: "{{ git_repo_services_list }}"
 
   - name: Render the service files
@@ -29,7 +29,7 @@
     template:
       src: "unit.timer.j2"
       dest: "/etc/systemd/system/{{ item.unit_name }}.timer"
-    when: 'timer_spec' in item
+    when: "'timer_spec' in item"
     loop: "{{ git_repo_services_list }}"
 
   - name: Make the /etc/systemd-envfiles directory
@@ -46,11 +46,24 @@
       mode: 0700
     loop: "{{ git_repo_services_list }}"
 
+  - name: Write any setup commands to scripts
+    copy:
+      dest: "/var/local/.ansible_git_repo_services_{{ item.unit_name }}"
+      mode: 0700
+      content: "{{ item.setup_script }}"
+    when: "'setup_script' in item"
+    loop: "{{ git_repo_services_list }}"
+    register: setup_script_result
+
+  - name: Run any scripts that changed
+    shell: "{{ item.dest }}" 
+    when: "item is changed"
+    loop: "{{ setup_script_result.results }}"
+
   - name: Start and enable services
     systemd:
       daemon_reload: yes
-      name: >
-        {{ item.unit_name }}.{% if 'timer_spec' in item %}timer{% else %}service{% endif %}
+      name: "{{ item.unit_name }}.{% if 'timer_spec' in item %}timer{% else %}service{% endif %}"
       state: started
       enabled: yes
     loop: "{{ git_repo_services_list }}"
